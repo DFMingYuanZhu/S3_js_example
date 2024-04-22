@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Upload File to S3</title>
+  <script>
+    async function multiPartFileInput() {
+      const fileInput = document.getElementById('multiPartFile');
+      const file = fileInput.files[0];
+      if (!file) {
+        console.log("Please select a file");
+        return;
+      }
+
+      // 初始化参数
+      const uploadId = "qy7vcfOKlX52bf1Y67nY4dcHPk0KUc6A25chgdXSXvEzl5rgaxtumhzfCzWVoztdruTaQJcD4N_ONom2WUSCEg--"; // 预签名上传 ID
+      const partSize = 10 * 1000 * 1000; // 每部分大小 10MB
+      const preSignedUrls = [
+         // 添加更多预签名 URL
+          "https://bucket-mzhu-test1.s3.amazonaws.com/presign/test3.txt?uploadId=qy7vcfOKlX52bf1Y67nY4dcHPk0KUc6A25chgdXSXvEzl5rgaxtumhzfCzWVoztdruTaQJcD4N_ONom2WUSCEg--&partNumber=1&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20240422T161357Z&X-Amz-SignedHeaders=host&X-Amz-Expires=3599&X-Amz-Credential=AKIA6BB52WN2V5LD7L5F%2F20240422%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=94af088a50e51f238a70f2430fc1ad80945454ff96bd7a9647e05b6207a33abf",
+          "https://bucket-mzhu-test1.s3.amazonaws.com/presign/test3.txt?uploadId=qy7vcfOKlX52bf1Y67nY4dcHPk0KUc6A25chgdXSXvEzl5rgaxtumhzfCzWVoztdruTaQJcD4N_ONom2WUSCEg--&partNumber=2&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20240422T161357Z&X-Amz-SignedHeaders=host&X-Amz-Expires=3600&X-Amz-Credential=AKIA6BB52WN2V5LD7L5F%2F20240422%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=d11073f38f62b3826143d4688cf5118d9810ee095239bb4bf86878259384538d",
+          "https://bucket-mzhu-test1.s3.amazonaws.com/presign/test3.txt?uploadId=qy7vcfOKlX52bf1Y67nY4dcHPk0KUc6A25chgdXSXvEzl5rgaxtumhzfCzWVoztdruTaQJcD4N_ONom2WUSCEg--&partNumber=3&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20240422T161357Z&X-Amz-SignedHeaders=host&X-Amz-Expires=3600&X-Amz-Credential=AKIA6BB52WN2V5LD7L5F%2F20240422%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=fb9c4a5a0bb2c7b18c389181d37d013b34475e894d9f5b5bd401fff06758ca7e"
+      ];
+
+      const partETags = []; // 存储每个部分的 ETag
+
+      // 分段上传
+      for (let i = 0; i < preSignedUrls.length; i++) {
+        const start = i * partSize;
+        const end = Math.min(start + partSize, file.size);
+
+        const chunk = file.slice(start, end); // 分段
+        const presignedUrl = preSignedUrls[i]; // 对应的预签名 URL
+
+        // 上传分段
+        const response = await fetch(presignedUrl, {
+          method: 'PUT',
+          body: chunk,
+        });
+
+        if (response.ok) {
+          const etag = response.headers.get('ETag');
+          console.log("etag uploaded successfully:", etag);
+          partETags.push({
+            PartNumber: i + 1,
+            ETag: etag,
+          });
+        } else {
+          console.error("Failed to upload part", i + 1);
+          return; // 如果失败，中止上传
+        }
+      }
+
+      console.log("All parts uploaded successfully:", partETags);
+    }
+    async function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const file = fileInput.files[0];
+
+      // 获取预签名 URL
+      //const response = await fetch("/presigned-url");
+      ///const data = await response.json();
+      const presignedUrl = 'https://bucket-mzhu-test1.s3.amazonaws.com/presign/test1.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20240422T030806Z&X-Amz-SignedHeaders=content-type%3Bhost&X-Amz-Expires=3599&X-Amz-Credential=AKIA6BB52WN2V5LD7L5F%2F20240422%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Signature=f17e9ad5d33600a7362f0d7d799d6b9a6dc66f78a694926a001cfa1f6796aee1'
+
+      // 使用预签名 URL 上传文件
+      const uploadResponse = await fetch(presignedUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": "text/plain", // 确保 Content-Type 一致
+        },
+      });
+
+      if (uploadResponse.ok) {
+        alert("File uploaded successfully!");
+      } else {
+        alert("Failed to upload file.");
+      }
+    }
+  </script>
+</head>
+<body>
+<h1>Upload File to S3</h1>
+<form onsubmit="event.preventDefault(); uploadFile();">
+  <label for="fileInput">Choose file to upload:</label>
+  <input type="file" id="fileInput" />
+  <button type="submit">Upload</button>
+</form>
+
+<h1>Multipart Upload File to S3</h1>
+<form onsubmit="event.preventDefault(); multiPartFileInput();">
+  <label for="fileInput">Choose file to upload:</label>
+  <input type="file" id="multiPartFile" />
+  <button type="submit">Upload</button>
+</form>
+</body>
+</html>
